@@ -1,0 +1,26 @@
+syntax = "proto3";
+package msg;
+
+option go_package = "github.com/kristensala/go-chat/msgpb";
+
+message User {
+    string name = 1;
+}
+
+/*message Room {
+    int32 id = 1;
+    int32 capacity = 2;
+    repeated User users = 3;
+}*/
+
+message Message {
+    string body = 1;
+    User user = 2;
+}
+
+message NoParams {}
+
+service CommunicationService {
+    rpc SendMessage (Message) returns (Message) {}
+    rpc GetMessages (NoParams) returns (stream Message) {}
+}
