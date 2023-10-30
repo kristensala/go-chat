@@ -7,6 +7,13 @@ import (
 	"log"
 	"time"
 
+	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/app"
+	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/data/binding"
+	"fyne.io/fyne/v2/layout"
+	"fyne.io/fyne/v2/widget"
+
 	pb "github.com/kristensala/go-chat/msgpb"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -16,7 +23,47 @@ var (
 	addr = flag.String("addr", "localhost:50011", "the address to connect to")
 )
 
+//todo: ask for a username and then connect to the server
 func main() {
+    messages := binding.BindStringList(
+        &[]string{"message1", "message2"},
+    )
+
+    chatApp := app.New()
+    window := chatApp.NewWindow("Go-chat")
+    window.Resize(fyne.NewSize(500, 600))
+    window.SetFixedSize(true)
+
+    input := widget.NewEntry()
+    input.SetPlaceHolder("Message")
+
+    messagesContainer := container.New(
+        layout.NewGridLayout(1),
+        widget.NewListWithData(messages,
+            func() fyne.CanvasObject {
+                return widget.NewLabel("test")
+            },
+            func(i binding.DataItem, o fyne.CanvasObject) {
+                o.(*widget.Label).Bind(i.(binding.String))
+		    },
+        ),
+    )
+
+    controls := container.New(
+        layout.NewGridLayout(1),
+        input,
+        widget.NewButton("Send", func() {
+            log.Println(input.Text)
+            messages.Append(input.Text)
+
+            input.SetText("")
+        }))
+
+    window.SetContent(container.NewBorder(nil, controls, nil, nil, messagesContainer))
+    window.ShowAndRun()
+}
+
+func connects() {
 	flag.Parse()
 
 	// Set up a connection to the server.
