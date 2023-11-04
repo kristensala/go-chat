@@ -10,7 +10,6 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
-	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/widget"
 
@@ -25,41 +24,48 @@ var (
 
 //todo: ask for a username and then connect to the server
 func main() {
-    messages := binding.BindStringList(
-        &[]string{"message1", "message2"},
-    )
-
     chatApp := app.New()
     window := chatApp.NewWindow("Go-chat")
     window.Resize(fyne.NewSize(500, 600))
     window.SetFixedSize(true)
 
-    input := widget.NewEntry()
+    input := widget.NewMultiLineEntry()
+    input.SetMinRowsVisible(1)
     input.SetPlaceHolder("Message")
 
-    messagesContainer := container.New(
-        layout.NewGridLayout(1),
-        widget.NewListWithData(messages,
-            func() fyne.CanvasObject {
-                return widget.NewLabel("test")
-            },
-            func(i binding.DataItem, o fyne.CanvasObject) {
-                o.(*widget.Label).Bind(i.(binding.String))
-		    },
-        ),
-    )
+    history := container.New(layout.NewVBoxLayout())
+    content := container.NewScroll(history)
+    middlePart := container.NewBorder(nil, nil, nil ,nil, content)
 
     controls := container.New(
         layout.NewGridLayout(1),
         input,
         widget.NewButton("Send", func() {
+            if len(input.Text) == 0 {
+                return
+            }
+
             log.Println(input.Text)
-            messages.Append(input.Text)
+            txt := widget.NewRichText(
+                &widget.TextSegment{
+                    Style: widget.RichTextStyleStrong,
+                    Text: "sender name: ",
+                },
+                &widget.TextSegment{
+                    Style: widget.RichTextStyleParagraph,
+                    Text: input.Text,
+                },
+            )
+            txt.Wrapping = fyne.TextWrap(fyne.TextWrapWord)
+
+            history.Add(txt)
+            content.ScrollToBottom()
 
             input.SetText("")
         }))
 
-    window.SetContent(container.NewBorder(nil, controls, nil, nil, messagesContainer))
+
+    window.SetContent(container.NewBorder(nil, controls, nil, nil, middlePart))
     window.ShowAndRun()
 }
 
