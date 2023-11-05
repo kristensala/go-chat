@@ -28,7 +28,7 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type CommunicationServiceClient interface {
 	SendMessage(ctx context.Context, in *Message, opts ...grpc.CallOption) (*Message, error)
-	GetMessages(ctx context.Context, in *NoParams, opts ...grpc.CallOption) (CommunicationService_GetMessagesClient, error)
+	GetMessages(ctx context.Context, in *GetMessagesRequest, opts ...grpc.CallOption) (CommunicationService_GetMessagesClient, error)
 }
 
 type communicationServiceClient struct {
@@ -48,7 +48,7 @@ func (c *communicationServiceClient) SendMessage(ctx context.Context, in *Messag
 	return out, nil
 }
 
-func (c *communicationServiceClient) GetMessages(ctx context.Context, in *NoParams, opts ...grpc.CallOption) (CommunicationService_GetMessagesClient, error) {
+func (c *communicationServiceClient) GetMessages(ctx context.Context, in *GetMessagesRequest, opts ...grpc.CallOption) (CommunicationService_GetMessagesClient, error) {
 	stream, err := c.cc.NewStream(ctx, &CommunicationService_ServiceDesc.Streams[0], CommunicationService_GetMessages_FullMethodName, opts...)
 	if err != nil {
 		return nil, err
@@ -85,7 +85,7 @@ func (x *communicationServiceGetMessagesClient) Recv() (*Message, error) {
 // for forward compatibility
 type CommunicationServiceServer interface {
 	SendMessage(context.Context, *Message) (*Message, error)
-	GetMessages(*NoParams, CommunicationService_GetMessagesServer) error
+	GetMessages(*GetMessagesRequest, CommunicationService_GetMessagesServer) error
 	mustEmbedUnimplementedCommunicationServiceServer()
 }
 
@@ -96,7 +96,7 @@ type UnimplementedCommunicationServiceServer struct {
 func (UnimplementedCommunicationServiceServer) SendMessage(context.Context, *Message) (*Message, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SendMessage not implemented")
 }
-func (UnimplementedCommunicationServiceServer) GetMessages(*NoParams, CommunicationService_GetMessagesServer) error {
+func (UnimplementedCommunicationServiceServer) GetMessages(*GetMessagesRequest, CommunicationService_GetMessagesServer) error {
 	return status.Errorf(codes.Unimplemented, "method GetMessages not implemented")
 }
 func (UnimplementedCommunicationServiceServer) mustEmbedUnimplementedCommunicationServiceServer() {}
@@ -131,7 +131,7 @@ func _CommunicationService_SendMessage_Handler(srv interface{}, ctx context.Cont
 }
 
 func _CommunicationService_GetMessages_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(NoParams)
+	m := new(GetMessagesRequest)
 	if err := stream.RecvMsg(m); err != nil {
 		return err
 	}
