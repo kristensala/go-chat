@@ -1,11 +1,11 @@
-module github.com/kristensala/go-chat/client2
+module github.com/kristensala/go-chat
 
 go 1.21.2
 
 require (
 	fyne.io/fyne/v2 v2.4.1
-	github.com/kristensala/go-chat v0.0.0-20231029154724-f1d4c95e3ba9
 	google.golang.org/grpc v1.59.0
+	google.golang.org/protobuf v1.31.0
 )
 
 require (
@@ -36,7 +36,6 @@ require (
 	golang.org/x/sys v0.11.0 // indirect
 	golang.org/x/text v0.12.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20230822172742-b8732ec3820d // indirect
-	google.golang.org/protobuf v1.31.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	honnef.co/go/js/dom v0.0.0-20210725211120-f030747120f2 // indirect
 )
