@@ -26,7 +26,7 @@ var (
 
 type chatApp struct {
     serviceClient pb.CommunicationServiceClient
-    pulledMessagesFromServer []pb.Message
+    pulledMessagesFromServer []*pb.Message
     lastPulledMessageTime int64
 }
 
@@ -46,10 +46,6 @@ func initApp() chatApp {
 func main() {
     //TODO pass cli argument (username) when starting the client 
     log.Println("starting")
-    application := initApp()
-    //defer application.serviceClient.Close()
-
-    go application.getMessages()
 
     chatApp := app.New()
     window := chatApp.NewWindow("Go-chat")
@@ -63,6 +59,9 @@ func main() {
     //history := container.New(layout.NewVBoxLayout())
     content := container.NewScroll(historyContainer)
     middlePart := container.NewBorder(nil, nil, nil ,nil, content)
+
+    application := initApp()
+    go application.getMessages()
 
     controls := container.New(
         layout.NewGridLayout(1),
@@ -83,12 +82,11 @@ func main() {
                 },
             )
             txt.Wrapping = fyne.TextWrap(fyne.TextWrapWord)
-
-            //historyContainer.Add(txt) //TODO add the listened messages
             application.sendMessage("user", input.Text)
 
             content.ScrollToBottom()
             input.SetText("")
+
         }))
 
 
@@ -141,10 +139,14 @@ func (c *chatApp) getMessages() {
 
             messages := response.GetMessages()
             for _, message := range messages {
-                fmt.Println(message.GetBody())
+                c.pulledMessagesFromServer = append(c.pulledMessagesFromServer, message)
+                //fmt.Println(message.GetBody())
                 if c.lastPulledMessageTime < message.GetUnixDateTime() {
                     c.lastPulledMessageTime = message.GetUnixDateTime()
                 }
+
+                uiMessage := buildUiMessage(message.GetUser().GetName(), message.GetBody())
+                go historyContainer.Add(uiMessage)
             }
         }
     }()
