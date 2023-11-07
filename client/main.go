@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"sync"
 	"time"
 
 	"fyne.io/fyne/v2"
@@ -56,12 +57,11 @@ func main() {
     input.SetMinRowsVisible(1)
     input.SetPlaceHolder("Message")
 
-    //history := container.New(layout.NewVBoxLayout())
     content := container.NewScroll(historyContainer)
     middlePart := container.NewBorder(nil, nil, nil ,nil, content)
 
     application := initApp()
-    go application.getMessages()
+    go application.getMessages(content)
 
     controls := container.New(
         layout.NewGridLayout(1),
@@ -84,9 +84,7 @@ func main() {
             txt.Wrapping = fyne.TextWrap(fyne.TextWrapWord)
             application.sendMessage("user", input.Text)
 
-            content.ScrollToBottom()
             input.SetText("")
-
         }))
 
 
@@ -123,7 +121,7 @@ func connectToServer() (pb.CommunicationServiceClient, error) {
     return c, nil
 }
 
-func (c *chatApp) getMessages() {
+func (c *chatApp) getMessages(contentContainer *container.Scroll) {
     go func() {
         for {
             request := &pb.GetMessagesRequest{
@@ -140,17 +138,26 @@ func (c *chatApp) getMessages() {
             messages := response.GetMessages()
             for _, message := range messages {
                 c.pulledMessagesFromServer = append(c.pulledMessagesFromServer, message)
-                //fmt.Println(message.GetBody())
                 if c.lastPulledMessageTime < message.GetUnixDateTime() {
                     c.lastPulledMessageTime = message.GetUnixDateTime()
                 }
 
                 uiMessage := buildUiMessage(message.GetUser().GetName(), message.GetBody())
-                go historyContainer.Add(uiMessage)
+
+                var wg sync.WaitGroup
+                wg.Add(1)
+                go func() {
+                    historyContainer.Add(uiMessage)
+                    wg.Done()
+                }()
+                wg.Wait()
+
+                contentContainer.ScrollToBottom()
             }
+
         }
     }()
-    select{} // runs in Background
+    select{}
 }
 
 func listenMessagesStream() {
