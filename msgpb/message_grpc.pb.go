@@ -19,8 +19,10 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	CommunicationService_SendMessage_FullMethodName = "/msg.CommunicationService/SendMessage"
-	CommunicationService_GetMessages_FullMethodName = "/msg.CommunicationService/GetMessages"
+	CommunicationService_SendMessage_FullMethodName      = "/msg.CommunicationService/SendMessage"
+	CommunicationService_GetMessageStream_FullMethodName = "/msg.CommunicationService/GetMessageStream"
+	CommunicationService_GetMessages_FullMethodName      = "/msg.CommunicationService/GetMessages"
+	CommunicationService_RegisterUser_FullMethodName     = "/msg.CommunicationService/RegisterUser"
 )
 
 // CommunicationServiceClient is the client API for CommunicationService service.
@@ -28,7 +30,9 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type CommunicationServiceClient interface {
 	SendMessage(ctx context.Context, in *Message, opts ...grpc.CallOption) (*Message, error)
-	GetMessages(ctx context.Context, in *GetMessagesRequest, opts ...grpc.CallOption) (CommunicationService_GetMessagesClient, error)
+	GetMessageStream(ctx context.Context, in *EmptyRequest, opts ...grpc.CallOption) (CommunicationService_GetMessageStreamClient, error)
+	GetMessages(ctx context.Context, in *GetMessagesRequest, opts ...grpc.CallOption) (*GetMessagesResponse, error)
+	RegisterUser(ctx context.Context, in *RegisterUserRequest, opts ...grpc.CallOption) (*User, error)
 }
 
 type communicationServiceClient struct {
@@ -48,12 +52,12 @@ func (c *communicationServiceClient) SendMessage(ctx context.Context, in *Messag
 	return out, nil
 }
 
-func (c *communicationServiceClient) GetMessages(ctx context.Context, in *GetMessagesRequest, opts ...grpc.CallOption) (CommunicationService_GetMessagesClient, error) {
-	stream, err := c.cc.NewStream(ctx, &CommunicationService_ServiceDesc.Streams[0], CommunicationService_GetMessages_FullMethodName, opts...)
+func (c *communicationServiceClient) GetMessageStream(ctx context.Context, in *EmptyRequest, opts ...grpc.CallOption) (CommunicationService_GetMessageStreamClient, error) {
+	stream, err := c.cc.NewStream(ctx, &CommunicationService_ServiceDesc.Streams[0], CommunicationService_GetMessageStream_FullMethodName, opts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &communicationServiceGetMessagesClient{stream}
+	x := &communicationServiceGetMessageStreamClient{stream}
 	if err := x.ClientStream.SendMsg(in); err != nil {
 		return nil, err
 	}
@@ -63,16 +67,16 @@ func (c *communicationServiceClient) GetMessages(ctx context.Context, in *GetMes
 	return x, nil
 }
 
-type CommunicationService_GetMessagesClient interface {
+type CommunicationService_GetMessageStreamClient interface {
 	Recv() (*Message, error)
 	grpc.ClientStream
 }
 
-type communicationServiceGetMessagesClient struct {
+type communicationServiceGetMessageStreamClient struct {
 	grpc.ClientStream
 }
 
-func (x *communicationServiceGetMessagesClient) Recv() (*Message, error) {
+func (x *communicationServiceGetMessageStreamClient) Recv() (*Message, error) {
 	m := new(Message)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
@@ -80,12 +84,32 @@ func (x *communicationServiceGetMessagesClient) Recv() (*Message, error) {
 	return m, nil
 }
 
+func (c *communicationServiceClient) GetMessages(ctx context.Context, in *GetMessagesRequest, opts ...grpc.CallOption) (*GetMessagesResponse, error) {
+	out := new(GetMessagesResponse)
+	err := c.cc.Invoke(ctx, CommunicationService_GetMessages_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *communicationServiceClient) RegisterUser(ctx context.Context, in *RegisterUserRequest, opts ...grpc.CallOption) (*User, error) {
+	out := new(User)
+	err := c.cc.Invoke(ctx, CommunicationService_RegisterUser_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // CommunicationServiceServer is the server API for CommunicationService service.
 // All implementations must embed UnimplementedCommunicationServiceServer
 // for forward compatibility
 type CommunicationServiceServer interface {
 	SendMessage(context.Context, *Message) (*Message, error)
-	GetMessages(*GetMessagesRequest, CommunicationService_GetMessagesServer) error
+	GetMessageStream(*EmptyRequest, CommunicationService_GetMessageStreamServer) error
+	GetMessages(context.Context, *GetMessagesRequest) (*GetMessagesResponse, error)
+	RegisterUser(context.Context, *RegisterUserRequest) (*User, error)
 	mustEmbedUnimplementedCommunicationServiceServer()
 }
 
@@ -96,8 +120,14 @@ type UnimplementedCommunicationServiceServer struct {
 func (UnimplementedCommunicationServiceServer) SendMessage(context.Context, *Message) (*Message, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SendMessage not implemented")
 }
-func (UnimplementedCommunicationServiceServer) GetMessages(*GetMessagesRequest, CommunicationService_GetMessagesServer) error {
-	return status.Errorf(codes.Unimplemented, "method GetMessages not implemented")
+func (UnimplementedCommunicationServiceServer) GetMessageStream(*EmptyRequest, CommunicationService_GetMessageStreamServer) error {
+	return status.Errorf(codes.Unimplemented, "method GetMessageStream not implemented")
+}
+func (UnimplementedCommunicationServiceServer) GetMessages(context.Context, *GetMessagesRequest) (*GetMessagesResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetMessages not implemented")
+}
+func (UnimplementedCommunicationServiceServer) RegisterUser(context.Context, *RegisterUserRequest) (*User, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RegisterUser not implemented")
 }
 func (UnimplementedCommunicationServiceServer) mustEmbedUnimplementedCommunicationServiceServer() {}
 
@@ -130,25 +160,61 @@ func _CommunicationService_SendMessage_Handler(srv interface{}, ctx context.Cont
 	return interceptor(ctx, in, info, handler)
 }
 
-func _CommunicationService_GetMessages_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(GetMessagesRequest)
+func _CommunicationService_GetMessageStream_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(EmptyRequest)
 	if err := stream.RecvMsg(m); err != nil {
 		return err
 	}
-	return srv.(CommunicationServiceServer).GetMessages(m, &communicationServiceGetMessagesServer{stream})
+	return srv.(CommunicationServiceServer).GetMessageStream(m, &communicationServiceGetMessageStreamServer{stream})
 }
 
-type CommunicationService_GetMessagesServer interface {
+type CommunicationService_GetMessageStreamServer interface {
 	Send(*Message) error
 	grpc.ServerStream
 }
 
-type communicationServiceGetMessagesServer struct {
+type communicationServiceGetMessageStreamServer struct {
 	grpc.ServerStream
 }
 
-func (x *communicationServiceGetMessagesServer) Send(m *Message) error {
+func (x *communicationServiceGetMessageStreamServer) Send(m *Message) error {
 	return x.ServerStream.SendMsg(m)
+}
+
+func _CommunicationService_GetMessages_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetMessagesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CommunicationServiceServer).GetMessages(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CommunicationService_GetMessages_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CommunicationServiceServer).GetMessages(ctx, req.(*GetMessagesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CommunicationService_RegisterUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RegisterUserRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CommunicationServiceServer).RegisterUser(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CommunicationService_RegisterUser_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CommunicationServiceServer).RegisterUser(ctx, req.(*RegisterUserRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 // CommunicationService_ServiceDesc is the grpc.ServiceDesc for CommunicationService service.
@@ -162,11 +228,19 @@ var CommunicationService_ServiceDesc = grpc.ServiceDesc{
 			MethodName: "SendMessage",
 			Handler:    _CommunicationService_SendMessage_Handler,
 		},
+		{
+			MethodName: "GetMessages",
+			Handler:    _CommunicationService_GetMessages_Handler,
+		},
+		{
+			MethodName: "RegisterUser",
+			Handler:    _CommunicationService_RegisterUser_Handler,
+		},
 	},
 	Streams: []grpc.StreamDesc{
 		{
-			StreamName:    "GetMessages",
-			Handler:       _CommunicationService_GetMessages_Handler,
+			StreamName:    "GetMessageStream",
+			Handler:       _CommunicationService_GetMessageStream_Handler,
 			ServerStreams: true,
 		},
 	},

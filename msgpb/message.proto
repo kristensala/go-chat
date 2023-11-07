@@ -3,24 +3,34 @@ package msg;
 
 option go_package = "github.com/kristensala/go-chat/msgpb";
 
+message EmptyRequest { }
+
 message User {
     string name = 1;
 }
 
-//message date
 message Message {
     string body = 1;
     User user = 2;
     int64 unixDateTime = 3;
+    repeated User deliveredTo = 4;
 }
-
-message EmptyRequest {}
 
 message GetMessagesRequest {
     int64 unixDateTimeFrom = 1;
 }
 
+message GetMessagesResponse {
+    repeated Message messages = 1;
+}
+
+message RegisterUserRequest {
+    string userName = 1;
+}
+
 service CommunicationService {
     rpc SendMessage (Message) returns (Message) {}
-    rpc GetMessages (GetMessagesRequest) returns (stream Message) {}
+    rpc GetMessageStream (EmptyRequest) returns (stream Message) {}
+    rpc GetMessages (GetMessagesRequest) returns (GetMessagesResponse) {}
+    rpc RegisterUser (RegisterUserRequest) returns (User) {}
 }
