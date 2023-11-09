@@ -3,9 +3,8 @@ package main
 import (
 	"context"
 	"flag"
-	"fmt"
-	"io"
 	"log"
+	"os"
 	"sync"
 	"time"
 
@@ -13,6 +12,7 @@ import (
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/layout"
+	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 
 	pb "github.com/kristensala/go-chat/msgpb"
@@ -29,9 +29,13 @@ type chatApp struct {
     serviceClient pb.CommunicationServiceClient
     pulledMessagesFromServer []*pb.Message
     lastPulledMessageTime int64
+    username string
 }
 
 func initApp() chatApp {
+    usernameArg := os.Args[1]
+    log.Println(usernameArg)
+
     client, err := connectToServer()
     if err != nil {
         log.Fatalf("Could not connect to the server %v", err)
@@ -39,15 +43,13 @@ func initApp() chatApp {
 
     return chatApp{
         serviceClient: client,
+        username: *&usernameArg,
     }
 }
 
 //https://github.com/grpc/grpc-go/tree/master/examples/features/keepalive
 //https://programmingpercy.tech/blog/streaming-data-with-grpc/
 func main() {
-    //TODO pass cli argument (username) when starting the client 
-    log.Println("starting")
-
     chatApp := app.New()
     window := chatApp.NewWindow("Go-chat")
     window.Resize(fyne.NewSize(500, 600))
@@ -71,18 +73,7 @@ func main() {
                 return
             }
 
-            txt := widget.NewRichText(
-                &widget.TextSegment{
-                    Style: widget.RichTextStyleStrong,
-                    Text: "sender name: ",
-                },
-                &widget.TextSegment{
-                    Style: widget.RichTextStyleParagraph,
-                    Text: input.Text,
-                },
-            )
-            txt.Wrapping = fyne.TextWrap(fyne.TextWrapWord)
-            application.sendMessage("user", input.Text)
+            application.sendMessage(application.username, input.Text)
 
             input.SetText("")
         }))
@@ -92,11 +83,23 @@ func main() {
     window.ShowAndRun()
 }
 
-func buildUiMessage(senderName string, body string) *widget.RichText {
+func (c *chatApp) buildUiMessage(senderName string, body string) *widget.RichText {
+    textColor := theme.ColorNameError
+    if c.isMessageSenderMe(senderName) {
+        textColor = theme.ColorNamePrimary
+    }
+    
+    style := widget.RichTextStyle{
+		ColorName: textColor,
+		Inline:    true,
+		SizeName:  theme.SizeNameText,
+		TextStyle: fyne.TextStyle{Bold: true},
+    }
+
     txt := widget.NewRichText(
         &widget.TextSegment{
-            Style: widget.RichTextStyleStrong,
-            Text: senderName,
+            Style: style,
+            Text: senderName + " ",
         },
         &widget.TextSegment{
             Style: widget.RichTextStyleParagraph,
@@ -117,7 +120,6 @@ func connectToServer() (pb.CommunicationServiceClient, error) {
 	}
 
     c := pb.NewCommunicationServiceClient(conn)
-
     return c, nil
 }
 
@@ -127,6 +129,7 @@ func (c *chatApp) getMessages(contentContainer *container.Scroll) {
             request := &pb.GetMessagesRequest{
                 UnixDateTimeFrom: c.lastPulledMessageTime,
             }
+
             ctx, cancel := context.WithTimeout(context.Background(), time.Second)
             defer cancel()
 
@@ -142,7 +145,7 @@ func (c *chatApp) getMessages(contentContainer *container.Scroll) {
                     c.lastPulledMessageTime = message.GetUnixDateTime()
                 }
 
-                uiMessage := buildUiMessage(message.GetUser().GetName(), message.GetBody())
+                uiMessage := c.buildUiMessage(message.GetUser().GetName(), message.GetBody())
 
                 var wg sync.WaitGroup
                 wg.Add(1)
@@ -154,45 +157,9 @@ func (c *chatApp) getMessages(contentContainer *container.Scroll) {
 
                 contentContainer.ScrollToBottom()
             }
-
         }
     }()
     select{}
-}
-
-func listenMessagesStream() {
-	flag.Parse()
-
-	conn, err := grpc.Dial(*addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-        log.Fatalf("Could not connect to the server %v", err)
-	}
-	defer conn.Close()
-	c := pb.NewCommunicationServiceClient(conn)
-
-    //TODO instead using a stream lets just use an endpoint that returns a list
-    stream, err := c.GetMessageStream(context.Background(), &pb.EmptyRequest{})
-    if err != nil {
-        log.Fatalf("could not get messages: %v", err)
-    }
-
-    go func() {
-        for {
-            res, err := stream.Recv()
-            if err == io.EOF {
-                log.Println("EOF error, closing stream")
-                stream.CloseSend() //@todo: What if i don't close and keep looping?
-
-                return
-            }
-            //historyContainer.Add(buildUiMessage(res.GetUser().GetName(), res.GetBody()))
-            if res.GetBody() != "" {
-                fmt.Printf("Message in server: %v", res)
-            }
-
-        }
-    }()
-    select{} //non blocking
 }
 
 func (c *chatApp) sendMessage(senderName string, body string) {
@@ -203,6 +170,9 @@ func (c *chatApp) sendMessage(senderName string, body string) {
     _, err := c.serviceClient.SendMessage(ctx, &pb.Message{
         Body: body,
         UnixDateTime: sendDateTimeUnix,
+        User: &pb.User{
+            Name: senderName,
+        },
     })
 	if err != nil {
         log.Printf("Could not send the message: %v", err)
@@ -212,13 +182,7 @@ func (c *chatApp) sendMessage(senderName string, body string) {
 	//log.Printf("message body: %s", r.GetBody())
 }
 
-// Todo
-func getLastMessageTime() int64 {
-    lastMessageTime := int64(0)
-
-    /*for _, message := range msgsFromServer {
-        //todo if lastMessageTime < message.time then lastMessageTime == message.Time
-    }*/
-    return lastMessageTime
+func (c *chatApp) isMessageSenderMe(senderName string) bool {
+    return senderName == c.username
 }
 
