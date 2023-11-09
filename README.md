@@ -1,4 +1,5 @@
 # Go-chat
+![image](/img/2023-11-10_00-41.png)
 
 ## How to use proto files
 * Run in the root of the project to generate message protobufs
